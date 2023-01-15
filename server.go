@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"sync"
 )
@@ -60,6 +61,38 @@ func (server *Server) Handler(conn net.Conn) {
 	//广播当前用户上线消息
 	server.BroadCast(user, "log in")
 
+	//接受客户端消息
+	//这个goroutine好像有点多余
+	go func() {
+		//close connection
+		defer func(conn net.Conn) {
+			fmt.Println("断开连接 与", conn.RemoteAddr().String())
+			err := conn.Close()
+			if err != nil {
+				fmt.Println("TCP connection close err:", err.Error())
+			}
+		}(conn)
+
+		buf := make([]byte, 4096)
+		for {
+			n, err := conn.Read(buf)
+			if n == 0 {
+				server.BroadCast(user, "log out")
+				return
+			}
+			if err != nil && err != io.EOF {
+				fmt.Println("Conn Read err:", err.Error())
+				return
+			}
+
+			//提取消息
+			msg := string(buf[0 : n-2])
+
+			//广播消息
+			server.BroadCast(user, msg)
+		}
+	}()
+
 	//handler阻塞
 	//select {}
 }
@@ -71,7 +104,12 @@ func (server *Server) Start() {
 		fmt.Printf("net.Listen err: %v\n", err)
 	}
 	//close listen socket
-	defer listener.Close()
+	defer func(listener net.Listener) {
+		err := listener.Close()
+		if err != nil {
+			fmt.Println("listen socket close err:", err.Error())
+		}
+	}(listener)
 
 	//启动监听Message的goroutine
 	go server.ListenMessage()
