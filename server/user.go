@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net"
+	"strings"
 )
 
 type User struct {
@@ -72,7 +73,7 @@ func (user *User) DoMessage(msg string) {
 		}
 		user.server.mapLock.Unlock()
 	} else if len(msg) > 7 && msg[:7] == "rename|" {
-		//消息格式:rename|someName
+		//消息格式:rename|张三
 		newName := msg[7:]
 
 		user.server.mapLock.Lock()
@@ -89,6 +90,32 @@ func (user *User) DoMessage(msg string) {
 			user.Name = newName
 			user.SendMsg("您已更新用户名为:" + user.Name + "\r\n")
 		}
+
+	} else if len(msg) > 4 && msg[:3] == "to|" {
+		//消息格式:to|张三|消息内容
+
+		//获取对方用户名
+		remoteName := strings.Split(msg, "|")[1]
+		if remoteName == "" {
+			user.SendMsg("消息格式错误,正确格式是:to|张三|消息内容\r\n")
+			return
+		}
+
+		//得到对方user对象
+		remoteUser, ok := user.server.OnlineMap[remoteName]
+		if !ok {
+			user.SendMsg("用户名不存在\r\n")
+			return
+		}
+
+		//获取消息
+		content := strings.Split(msg, "|")[2]
+		if content == "" {
+			user.SendMsg("内容为空,请重新发送\r\n")
+			return
+		}
+		//发送消息
+		remoteUser.SendMsg(user.Name + "对你说:" + content + "\r\n")
 
 	} else {
 		user.server.BroadCast(user, msg)

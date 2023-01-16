@@ -82,7 +82,8 @@ func (client *Client) PublicChat() bool {
 			}
 		}
 		chatMsg = ""
-		// FIXME 如果用户在这里被踢出 必须至少输入两次字符才能退出程序
+		// FIXME
+		// 如果用户在这里被踢出 必须至少输入两次字符才能退出程序
 		_, _ = fmt.Scanln(&chatMsg)
 	}
 	return true
