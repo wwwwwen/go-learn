@@ -21,7 +21,7 @@ func NewClient(serverIp string, serverPort int) *Client {
 	client := &Client{
 		ServerIp:   serverIp,
 		ServerPort: serverPort,
-		opt:        999,
+		opt:        -1,
 	}
 
 	//连接服务器
@@ -77,10 +77,12 @@ func (client *Client) PublicChat() bool {
 			_, err := client.conn.Write([]byte(sendMsg))
 			if err != nil {
 				fmt.Println("conn.Write err:", err.Error())
+				client.opt = 0
 				return false
 			}
 		}
 		chatMsg = ""
+		// FIXME 如果用户在这里被踢出 必须至少输入两次字符才能退出程序
 		_, _ = fmt.Scanln(&chatMsg)
 	}
 	return true
@@ -94,6 +96,7 @@ func (client *Client) UpdateName() bool {
 	_, err := client.conn.Write([]byte(sendMsg))
 	if err != nil {
 		fmt.Println("conn.Write err", err.Error())
+		client.opt = 0
 		return false
 	}
 	return true
@@ -103,6 +106,7 @@ func (client *Client) QueryAllUsers() bool {
 	_, err := client.conn.Write([]byte("who\r\n"))
 	if err != nil {
 		fmt.Println("conn.Write err", err.Error())
+		client.opt = 0
 		return false
 	}
 	return true

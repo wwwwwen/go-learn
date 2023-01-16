@@ -62,14 +62,6 @@ func (server *Server) Handler(conn net.Conn) {
 
 	//接受客户端消息
 	go func() {
-		//close connection
-		defer func(conn net.Conn) {
-			fmt.Println("断开连接 与", conn.RemoteAddr().String())
-			err := conn.Close()
-			if err != nil {
-				fmt.Println("TCP connection close err:", err.Error())
-			}
-		}(conn)
 
 		buf := make([]byte, 4096)
 		for {
@@ -103,14 +95,15 @@ func (server *Server) Handler(conn net.Conn) {
 		case <-time.After(time.Second * 10):
 			//超时
 			//踢出user
-			user.SendMsg("你被踢了")
+			user.SendMsg("你被踢了\r\n")
 			//user.Offline()这个方法会被上面的代码调用
 			//销毁资源
 			time.Sleep(time.Millisecond * 100)
+			fmt.Println("断开连接 与", conn.RemoteAddr().String())
 			close(user.C)
 			err := conn.Close()
 			if err != nil {
-				fmt.Println("conn.Close err:", err.Error())
+				fmt.Println("TCP connection close err:", err.Error())
 			}
 			return
 		}
