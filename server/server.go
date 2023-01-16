@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"time"
 )
 
 type Server struct {
@@ -56,8 +57,10 @@ func (server *Server) Handler(conn net.Conn) {
 	//用户上线
 	user.Online()
 
+	//用户是否活跃
+	isLive := make(chan bool)
+
 	//接受客户端消息
-	//这个goroutine好像有点多余
 	go func() {
 		//close connection
 		defer func(conn net.Conn) {
@@ -85,11 +88,33 @@ func (server *Server) Handler(conn net.Conn) {
 
 			//广播消息
 			user.DoMessage(msg)
+
+			//用户是活跃的
+			isLive <- true
 		}
 	}()
 
-	//handler阻塞
-	//select {}
+	//超时强退
+	for {
+		select {
+		case <-isLive:
+			//用户是活跃的
+			//重置定时器
+		case <-time.After(time.Second * 10):
+			//超时
+			//踢出user
+			user.SendMsg("你被踢了")
+			//user.Offline()这个方法会被上面的代码调用
+			//销毁资源
+			time.Sleep(time.Millisecond * 100)
+			close(user.C)
+			err := conn.Close()
+			if err != nil {
+				fmt.Println("conn.Close err:", err.Error())
+			}
+			return
+		}
+	}
 }
 
 func (server *Server) Start() {
