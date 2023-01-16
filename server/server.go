@@ -29,7 +29,7 @@ func NewServer(ip string, port int) *Server {
 	return server
 }
 
-// 监听Message广播消息channel的goroutine，有消息就广播
+// ListenMessage 监听Message广播消息channel的goroutine，有消息就广播
 func (server *Server) ListenMessage() {
 	for {
 		msg := <-server.Message
@@ -42,7 +42,7 @@ func (server *Server) ListenMessage() {
 	}
 }
 
-// 广播消息的方法
+// BroadCast 广播消息的方法
 func (server *Server) BroadCast(user *User, msg string) {
 	sendMsg := "[" + user.Addr + "]" + user.Name + ":" + msg
 	server.Message <- sendMsg
@@ -52,14 +52,9 @@ func (server *Server) Handler(conn net.Conn) {
 	//业务
 	fmt.Println("连接建立成功 与", conn.RemoteAddr().String())
 
-	user := NewUser(conn)
-	//用户上线，加入OnlineMap
-	server.mapLock.Lock()
-	server.OnlineMap[user.Name] = user
-	server.mapLock.Unlock()
-
-	//广播当前用户上线消息
-	server.BroadCast(user, "log in")
+	user := NewUser(conn, server)
+	//用户上线
+	user.Online()
 
 	//接受客户端消息
 	//这个goroutine好像有点多余
@@ -77,7 +72,7 @@ func (server *Server) Handler(conn net.Conn) {
 		for {
 			n, err := conn.Read(buf)
 			if n == 0 {
-				server.BroadCast(user, "log out")
+				user.Offline()
 				return
 			}
 			if err != nil && err != io.EOF {
@@ -89,7 +84,7 @@ func (server *Server) Handler(conn net.Conn) {
 			msg := string(buf[0 : n-2])
 
 			//广播消息
-			server.BroadCast(user, msg)
+			user.DoMessage(msg)
 		}
 	}()
 
